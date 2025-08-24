@@ -1,4 +1,4 @@
-module github.com/lm-Kavya-Veer/drive-acl
+module github.com/lm-Kavya-Veer/drive-acl/DRIVE-ACL
 
 go 1.23.2
 
