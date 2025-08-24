@@ -1,0 +1,80 @@
+definition users {}
+
+definition roles {
+  relation user: users
+  relation scope:  partner | advertiser | publisher | feature
+}
+
+definition superroot {
+  relation superadmin: users
+  permission super = superadmin
+}
+
+caveat is_internal_and_enabled(enabled bool, principal_email string, email_domain string) {
+    enabled && principal_email == email_domain
+}
+
+caveat within_window(start_ts int, end_ts int, request_time int) {
+    request_time >= start_ts && request_time <= end_ts
+}
+
+definition partner {
+  relation root: superroot
+  relation user: users
+  relation role: roles
+  relation public: users:*
+  relation denied_user: users
+  permission super = root->super
+  permission view  = (super + public + (user) + (root->view)+(role->user & role->scope))- (denied_user)
+  permission admin = super + role->user
+}
+
+definition advertiser {
+  relation root: superroot
+  relation parent: partner
+  relation user: users
+  relation role: roles
+  relation public: users:*
+  relation denied_user: users
+  permission super = root->super
+ permission view =
+      (super +
+      public +
+      (root->view & user) +
+      (role->user  & parent->view) ) - (denied_user & parent->view)
+  permission admin = super + role->user + parent->admin
+}
+
+definition publisher {
+  relation root: superroot
+  relation parent: partner
+  relation user: users
+  relation role: roles
+  relation public: users:*
+  relation denied_user: users
+  permission super = root->super
+  permission view =
+      (super +
+      public +
+      (root->view & user) +
+      (role->user & parent->view))- (denied_user & parent->view)
+  permission admin = super + role->user + parent->admin
+}
+
+definition feature {
+  relation root: superroot
+  relation parent: advertiser | publisher | feature
+  relation user: users
+  relation role: roles
+  relation public: users:*
+  relation denied_user: users
+  permission super = root->super
+  permission can_direct_user_view = user & parent->view
+  permission inherited_view = parent->view
+  permission view = (
+      super +
+      public +
+      can_direct_user_view +
+      (role->user  & inherited_view) ) - (denied_user & parent->view)
+  permission admin = super + role->user + inherited_view
+}
