@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/kavyaveer/drive-acl/authz"
+	"github.com/lm-Kavya-Veer/drive-acl/authz"
 )
 
 func main() {
