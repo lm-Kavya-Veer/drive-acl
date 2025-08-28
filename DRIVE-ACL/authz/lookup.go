@@ -17,11 +17,14 @@ type Node struct {
 	Children []*Node `json:"children,omitempty"`
 }
 
-// ListResourceHierarchy returns a hierarchical tree of resources for any subject
-func ListResourceHierarchy(resourceType, permission, subjectType, subjectID string) []*Node {
-	ctx := context.Background()
+func key(t, id string) string {
+	return t + ":" + id
+}
 
-	// Step 1: Lookup all accessible resources for the subject
+func ListResourceHierarchy(resourceType, permission, subjectType, subjectID string) *Node {
+	ctx := context.Background()
+	fmt.Println("[DEBUG] Listing hierarchy for resourceType:", resourceType)
+	// Step 1: Lookup resources
 	resp, err := Client.LookupResources(ctx, &v1.LookupResourcesRequest{
 		ResourceObjectType: resourceType,
 		Permission:         permission,
@@ -37,89 +40,88 @@ func ListResourceHierarchy(resourceType, permission, subjectType, subjectID stri
 		return nil
 	}
 
-	type item struct {
-		id     string
-		parent string
-	}
-
-	rawItems := []item{}
-	resourceIDs := []string{}
-
-	// Collect all resource IDs
+	resourceIDs := map[string]bool{}
 	for {
 		r, err := resp.Recv()
+		fmt.Println("[DEBUG] Waiting for resource...", r)
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			log.Printf("error receiving resource: %v", err)
 			break
 		}
-		resourceIDs = append(resourceIDs, r.ResourceObjectId)
+		fmt.Println("[DEBUG] Found resource:", r.ResourceObjectId)
+		resourceIDs[r.ResourceObjectId] = true
 	}
 
-	// Step 2: Read parent relationships for these resources
+	// Step 2: Read relationships
 	parentResp, err := Client.ReadRelationships(ctx, &v1.ReadRelationshipsRequest{
 		RelationshipFilter: &v1.RelationshipFilter{
-			ResourceType:     resourceType,
 			OptionalRelation: "parent",
 		},
 	})
 	if err != nil {
-		log.Printf("failed to read parent relationships: %v", err)
+		log.Printf("failed to read relationships: %v", err)
 		return nil
 	}
-	fmt.Println("Parent relationships:")
-	fmt.Println(parentResp.Recv())
-	// Map: child -> parent
-	parentMap := make(map[string]string)
+
+	type edge struct {
+		ChildID  string
+		ParentID string
+	}
+
+	edges := []edge{}
 	for {
 		rel, err := parentResp.Recv()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			break
 		}
-		if rel.Relationship == nil || rel.Relationship.Resource == nil || rel.Relationship.Subject == nil || rel.Relationship.Subject.Object == nil {
+		if rel.Relationship == nil || rel.Relationship.Resource == nil || rel.Relationship.Subject == nil {
 			continue
 		}
-		childID := rel.Relationship.Resource.ObjectId
-		parentID := rel.Relationship.Subject.Object.ObjectId
-		parentMap[childID] = parentID
-	}
 
-	// Step 3: Build raw items
-	for _, id := range resourceIDs {
-		rawItems = append(rawItems, item{
-			id:     id,
-			parent: parentMap[id],
-		})
-	}
+		child := rel.Relationship.Resource
+		parent := rel.Relationship.Subject.Object
 
-	// Step 4: Build hierarchical tree
-	nodesMap := make(map[string]*Node)
-	for _, r := range rawItems {
-		nodesMap[r.id] = &Node{
-			ID:   r.id,
-			Type: resourceType,
-		}
-	}
-	fmt.Println(nodesMap)
-
-	var roots []*Node
-	for _, r := range rawItems {
-		node := nodesMap[r.id]
-		if r.parent == "" {
-			roots = append(roots, node)
-		} else {
-			parentNode, ok := nodesMap[r.parent]
-			if ok {
-				parentNode.Children = append(parentNode.Children, node)
-			} else {
-				roots = append(roots, node)
-			}
+		// keep only relationships where BOTH are same resourceType
+		if child.ObjectType == resourceType && parent.ObjectType == resourceType {
+			edges = append(edges, edge{ChildID: child.ObjectId, ParentID: parent.ObjectId})
 		}
 	}
 
-	return roots
+	// Step 3: Build node map
+	nodes := map[string]*Node{}
+	for id := range resourceIDs {
+		nodes[id] = &Node{ID: id, Type: resourceType}
+	}
+
+	// Step 4: Build hierarchy
+	hasParent := map[string]bool{}
+	for _, e := range edges {
+		child := nodes[e.ChildID]
+		parent := nodes[e.ParentID]
+		if child != nil && parent != nil {
+			parent.Children = append(parent.Children, child)
+			hasParent[e.ChildID] = true
+		}
+	}
+
+	// Step 5: Collect roots
+	roots := []*Node{}
+	for id, n := range nodes {
+		if !hasParent[id] {
+			roots = append(roots, n)
+		}
+	}
+
+	// return
+	if len(roots) == 1 {
+		return roots[0]
+	}
+	return &Node{ID: "root", Type: resourceType, Children: roots}
 }
 
 // ListResourceSubtree returns a hierarchical subtree starting from a specific resource

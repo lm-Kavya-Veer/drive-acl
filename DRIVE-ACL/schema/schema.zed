@@ -2,7 +2,7 @@ definition users {}
 
 definition roles {
   relation user: users
-  relation scope:  partner | advertiser | publisher | feature
+  relation scope:  page | partner | advertiser | publisher | feature
 }
 
 definition superroot {
@@ -16,6 +16,18 @@ caveat is_internal_and_enabled(enabled bool, principal_email string, email_domai
 
 caveat within_window(start_ts int, end_ts int, request_time int) {
     request_time >= start_ts && request_time <= end_ts
+}
+
+definition page {
+  relation root: superroot
+  relation role: roles
+  relation user: users
+  relation public: users:*
+  relation denied_user: users
+
+  permission super = root->super
+  permission view = (super + user + role->user + public) - denied_user
+  permission admin = super + role->user
 }
 
 definition partner {
@@ -39,7 +51,7 @@ definition advertiser {
   permission super = root->super
  permission view =
       (super +
-      public +
+      public + parent->view +
       (parent->view & user) +
       (role->user  & parent->view) ) - (denied_user & parent->view)
   permission admin = super + role->user + parent->admin
@@ -63,7 +75,7 @@ definition publisher {
 
 definition feature {
   relation root: superroot
-  relation parent: advertiser | publisher | feature
+  relation parent: advertiser | publisher | feature | partner | page
   relation user: users
   relation role: roles
   relation public: users:*

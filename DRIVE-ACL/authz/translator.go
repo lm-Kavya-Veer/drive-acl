@@ -11,14 +11,18 @@ func Translate(jsonData map[string]interface{}) []string {
 
 	// --- Roles ---
 	if roles, ok := jsonData["roles"].(map[string]interface{}); ok {
+		fmt.Println("Processing roles...", roles)
 		for role, v := range roles {
+			fmt.Println("Processing role:", role, v)
 			if roleMap, ok := v.(map[string]interface{}); ok {
-				for _, user := range toStrSlice(roleMap["users"]) {
+				for a, user := range toStrSlice(roleMap["users"]) {
+					fmt.Println("users:", user, a)
+					fmt.Println("Adding role user:", role, user)
 					rels = append(rels, fmt.Sprintf("roles:%s#user@users:%s", role, user))
 				}
 				for _, scope := range toStrSlice(roleMap["scopes"]) {
 					// scope must be one of: partner:ID | advertiser:ID | publisher:ID | feature:ID
-					if subj, ok := parseScopedSubject(scope, []string{"partner", "advertiser", "publisher", "feature"}); ok {
+					if subj, ok := parseScopedSubject(scope, []string{"partner", "advertiser", "publisher", "feature", "page"}); ok {
 						rels = append(rels, fmt.Sprintf("roles:%s#scope@%s", role, subj))
 					}
 				}
@@ -32,6 +36,40 @@ func Translate(jsonData map[string]interface{}) []string {
 			if cfgMap, ok := cfg.(map[string]interface{}); ok {
 				for _, sa := range toStrSlice(cfgMap["superadmin"]) {
 					rels = append(rels, fmt.Sprintf("superroot:%s#superadmin@users:%s", root, sa))
+				}
+			}
+		}
+	}
+
+	// --- Pages ---
+	if pages, ok := jsonData["pages"].(map[string]interface{}); ok {
+		for pname, v := range pages {
+			if pMap, ok := v.(map[string]interface{}); ok {
+				// root → superroot
+				if root := getString(pMap["root"]); root != "" {
+					rels = append(rels, fmt.Sprintf("page:%s#root@superroot:%s", pname, root))
+				}
+				// users
+				for _, u := range toStrSlice(pMap["users"]) {
+					rels = append(rels, fmt.Sprintf("page:%s#user@users:%s", pname, u))
+				}
+				// roles
+				for _, r := range toStrSlice(pMap["roles"]) {
+					rels = append(rels, fmt.Sprintf("page:%s#role@roles:%s", pname, r))
+				}
+				// public
+				if hasWildcard(pMap["public"]) {
+					rels = append(rels, fmt.Sprintf("page:%s#public@users:*", pname))
+				}
+				// denied
+				for _, d := range toStrSlice(pMap["denied_users"]) {
+					rels = append(rels, fmt.Sprintf("page:%s#denied_user@users:%s", pname, d))
+				}
+				// features attached directly to page
+				for _, f := range toStrSlice(pMap["features"]) {
+					if subj, ok := parseScopedSubject(f, []string{"feature"}); ok {
+						rels = append(rels, fmt.Sprintf("page:%s#feature@%s", pname, subj))
+					}
 				}
 			}
 		}
@@ -160,7 +198,7 @@ func processFeature(fname string, raw interface{}, parentFeature string) []strin
 	// Optional explicit top-level parent for feature (advertiser|publisher|feature)
 	// Accepts string or []string; each value like "advertiser:adv1", "publisher:pub1", or "feature:parent"
 	for _, p := range toStrSlice(fmap["parent"]) {
-		if subj, ok := parseScopedSubject(p, []string{"advertiser", "publisher", "feature"}); ok {
+		if subj, ok := parseScopedSubject(p, []string{"advertiser", "publisher", "feature", "partner", "page"}); ok {
 			rels = append(rels, fmt.Sprintf("feature:%s#parent@%s", fname, subj))
 		}
 	}
