@@ -2,7 +2,7 @@ definition users {}
 
 definition roles {
   relation user: users
-  relation scope:  page | partner | advertiser | publisher | feature
+  relation scope: page | partner | advertiser | publisher | feature
 }
 
 definition superroot {
@@ -26,8 +26,8 @@ definition page {
   relation denied_user: users
 
   permission super = root->super
-  permission view = (super + user + role->user + public) - denied_user
-  permission admin = super + role->user
+  permission admin = root->super
+  permission view = (super + admin + user + role->user + public) - denied_user
 }
 
 definition partner {
@@ -36,9 +36,11 @@ definition partner {
   relation role: roles
   relation public: users:*
   relation denied_user: users
+
+  permission admin = root->super
   permission super = root->super
-  permission view  = (super + public + (user) + (root->view)+(role->user & role->scope))- (denied_user)
-  permission admin = super + role->user
+  permission view  = (super + admin + public + user + (role->user & role->scope)) - denied_user
+
 }
 
 definition advertiser {
@@ -48,13 +50,16 @@ definition advertiser {
   relation role: roles
   relation public: users:*
   relation denied_user: users
+
+  permission admin = root->super + parent->admin
   permission super = root->super
- permission view =
+  permission view =
       (super +
-      public + parent->view +
+      public + 
+      admin  +
+      parent->view +
       (parent->view & user) +
-      (role->user  & parent->view) ) - (denied_user & parent->view)
-  permission admin = super + role->user + parent->admin
+      (role->user & parent->view)) - (denied_user & parent->view)
 }
 
 definition publisher {
@@ -64,13 +69,29 @@ definition publisher {
   relation role: roles
   relation public: users:*
   relation denied_user: users
+
   permission super = root->super
   permission view =
       (super +
       public +
       (parent->view & user) +
-      (role->user & parent->view))- (denied_user & parent->view)
+      (role->user & parent->view)) - (denied_user & parent->view)
   permission admin = super + role->user + parent->admin
+}
+
+definition api {
+  relation parent: feature
+  relation role: roles
+  relation user: users
+  relation denied_user: users
+
+  permission super = parent->super
+  permission admin = parent->admin
+  permission call = (
+      super +
+      admin +
+      (parent->view) +
+      (user & parent->view)) - denied_user
 }
 
 definition feature {
@@ -80,13 +101,18 @@ definition feature {
   relation role: roles
   relation public: users:*
   relation denied_user: users
+  relation api: api
+
   permission super = root->super
+  permission admin = root->super + parent->admin
   permission can_direct_user_view = user & parent->view
   permission inherited_view = parent->view
   permission view = (
       super +
+      admin +
       public +
       can_direct_user_view +
-      (role->user  & inherited_view) ) - (denied_user & parent->view)
-  permission admin = super + role->user + inherited_view
+      (role->user & inherited_view)) - (denied_user & parent->view)
+
+  permission call_api = api->call
 }

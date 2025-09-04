@@ -41,6 +41,32 @@ func Translate(jsonData map[string]interface{}) []string {
 		}
 	}
 
+	// --- APIs ---
+	if apis, ok := jsonData["apis"].(map[string]interface{}); ok {
+		for aname, v := range apis {
+			if aMap, ok := v.(map[string]interface{}); ok {
+				// parent → must be a feature
+				if parent := getString(aMap["parent"]); parent != "" {
+					if subj, ok := parseScopedSubject(parent, []string{"feature"}); ok {
+						rels = append(rels, fmt.Sprintf("api:%s#parent@%s", aname, subj))
+					}
+				}
+				// roles
+				for _, r := range toStrSlice(aMap["roles"]) {
+					rels = append(rels, fmt.Sprintf("api:%s#role@roles:%s", aname, r))
+				}
+				// users
+				for _, u := range toStrSlice(aMap["users"]) {
+					rels = append(rels, fmt.Sprintf("api:%s#user@users:%s", aname, u))
+				}
+				// denied users
+				for _, d := range toStrSlice(aMap["denied_users"]) {
+					rels = append(rels, fmt.Sprintf("api:%s#denied_user@users:%s", aname, d))
+				}
+			}
+		}
+	}
+
 	// --- Pages ---
 	if pages, ok := jsonData["pages"].(map[string]interface{}); ok {
 		for pname, v := range pages {

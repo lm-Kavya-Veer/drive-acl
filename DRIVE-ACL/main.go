@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/lm-Kavya-Veer/drive-acl/DRIVE-ACL/authz"
@@ -98,6 +99,34 @@ func main() {
 			"targetType": targetType,
 			"tree":       tree,
 		})
+	})
+
+	r.GET("/authz/token/:ssoUserId", func(c *gin.Context) {
+
+		ssoUserIdStr := c.Param("ssoUserId")
+		ssoUserId, err := strconv.ParseInt(ssoUserIdStr, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ssoUserId"})
+			return
+		}
+
+		var partnerID *int64
+		if pidStr := c.Query("partnerID"); pidStr != "" {
+			pid, err := strconv.ParseInt(pidStr, 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid partnerID"})
+				return
+			}
+			partnerID = &pid
+		}
+
+		token, err := authz.GetAuthorizationTokenDataForSSOUserId(ssoUserId, partnerID)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(200, token)
 	})
 
 	r.Run(":8082")

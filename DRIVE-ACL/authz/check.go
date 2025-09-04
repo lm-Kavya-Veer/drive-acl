@@ -15,7 +15,7 @@ func Check(user, objectType, objectID, permission string) bool {
 		Permission: permission,
 		Subject: &v1.SubjectReference{
 			Object: &v1.ObjectReference{
-				ObjectType: "user",
+				ObjectType: "users1",
 				ObjectId:   user,
 			},
 		},

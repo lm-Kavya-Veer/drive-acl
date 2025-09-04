@@ -199,7 +199,7 @@ func ListResourceSubtree(rootType, rootID, permission, subjectType, subjectID, t
 		parentMap[childKey] = parentKey
 		fmt.Printf("[DEBUG] ParentRel: %s -> %s\n", childKey, parentKey)
 	}
-
+	fmt.Println("[DEBUG] Total parent relationships:", len(parentMap), accessible)
 	// 3. Keep nodes only if path reaches root
 	nodesMap := make(map[string]*Node)
 	keepNodes := map[string]bool{}
@@ -223,6 +223,7 @@ func ListResourceSubtree(rootType, rootID, permission, subjectType, subjectID, t
 	}
 
 	for key := range accessible {
+		fmt.Println("[DEBUG] Checking path for accessible node:", key)
 		if walkUp(key) {
 			fmt.Println("[DEBUG] Path kept:", key, "→ root")
 		} else {
@@ -237,6 +238,7 @@ func ListResourceSubtree(rootType, rootID, permission, subjectType, subjectID, t
 			continue
 		}
 		if parts[0] != targetType {
+			fmt.Println("[DEBUG] Skipping non-target type node:", key)
 			continue // skip non-feature types
 		}
 		if _, ok := nodesMap[key]; !ok {
