@@ -9,6 +9,40 @@ import (
 	"github.com/lm-Kavya-Veer/drive-acl/DRIVE-ACL/authz"
 )
 
+type SubjectsResponse struct {
+	Subjects []string `json:"subjects"`
+	Error    string   `json:"error,omitempty"`
+}
+
+// inside authz/handlers.go
+func DirectSubjectsHandlerGin(c *gin.Context) {
+	resourceType := c.Query("resourceType")
+	resourceID := c.Query("resourceId")
+	relation := c.Query("relation")
+	subjectType := c.Query("subjectType")
+
+	subjects, err := authz.GetDirectSubjects(resourceType, resourceID, relation, subjectType)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"subjects": subjects})
+}
+
+func EffectiveSubjectsHandlerGin(c *gin.Context) {
+	resourceType := c.Query("resourceType")
+	resourceID := c.Query("resourceId")
+	permission := c.Query("permission")
+	subjectType := c.Query("subjectType")
+
+	subjects, err := authz.GetEffectiveSubjects(resourceType, resourceID, permission, subjectType)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"subjects": subjects})
+}
+
 func main() {
 	// init SpiceDB client
 	authz.InitClient()
@@ -128,6 +162,9 @@ func main() {
 
 		c.JSON(200, token)
 	})
+
+	r.GET("/authz/direct-subjects", DirectSubjectsHandlerGin)
+	r.GET("/authz/effective-subjects", EffectiveSubjectsHandlerGin)
 
 	r.Run(":8082")
 }

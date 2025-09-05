@@ -1,12 +1,20 @@
 definition users {}
 
+definition globaluser{
+  relation globaladmin: users
+
+  permission view= globaladmin
+}
+
 definition roles {
   relation user: users
   relation scope: page | partner | advertiser | publisher | feature
 }
 
 definition superroot {
+  relation globaluser: globaluser 
   relation superadmin: users
+
   permission super = superadmin
 }
 
@@ -19,6 +27,7 @@ caveat within_window(start_ts int, end_ts int, request_time int) {
 }
 
 definition page {
+  relation global: globaluser:* 
   relation root: superroot
   relation role: roles
   relation user: users
@@ -27,10 +36,11 @@ definition page {
 
   permission super = root->super
   permission admin = root->super
-  permission view = (super + admin + user + role->user + public) - denied_user
+  permission view = (super + admin  + user + role->user + public) - denied_user
 }
 
 definition partner {
+  relation global: globaluser:* 
   relation root: superroot
   relation user: users
   relation role: roles
@@ -44,6 +54,7 @@ definition partner {
 }
 
 definition advertiser {
+  relation global: globaluser:* 
   relation root: superroot
   relation parent: partner
   relation user: users
@@ -55,14 +66,15 @@ definition advertiser {
   permission super = root->super
   permission view =
       (super +
-      public + 
-      admin  +
+      public +
+      admin  + 
       parent->view +
       (parent->view & user) +
       (role->user & parent->view)) - (denied_user & parent->view)
 }
 
 definition publisher {
+  relation global: globaluser:* 
   relation root: superroot
   relation parent: partner
   relation user: users
@@ -80,6 +92,7 @@ definition publisher {
 }
 
 definition api {
+  relation global: globaluser:* 
   relation parent: feature
   relation role: roles
   relation user: users
@@ -88,13 +101,14 @@ definition api {
   permission super = parent->super
   permission admin = parent->admin
   permission call = (
-      super +
+      super + 
       admin +
       (parent->view) +
       (user & parent->view)) - denied_user
 }
 
 definition feature {
+  relation global: globaluser:* 
   relation root: superroot
   relation parent: advertiser | publisher | feature | partner | page
   relation user: users
@@ -108,7 +122,7 @@ definition feature {
   permission can_direct_user_view = user & parent->view
   permission inherited_view = parent->view
   permission view = (
-      super +
+      super + 
       admin +
       public +
       can_direct_user_view +

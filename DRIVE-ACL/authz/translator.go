@@ -37,6 +37,19 @@ func Translate(jsonData map[string]interface{}) []string {
 				for _, sa := range toStrSlice(cfgMap["superadmin"]) {
 					rels = append(rels, fmt.Sprintf("superroot:%s#superadmin@users:%s", root, sa))
 				}
+				for _, sa := range toStrSlice(cfgMap["globaluser"]) {
+					rels = append(rels, fmt.Sprintf("superroot:%s#globaluser@globaluser:%s", root, sa))
+				}
+			}
+		}
+	}
+
+	if sr, ok := jsonData["globaluser"].(map[string]interface{}); ok {
+		for root, cfg := range sr {
+			if cfgMap, ok := cfg.(map[string]interface{}); ok {
+				for _, sa := range toStrSlice(cfgMap["globaladmin"]) {
+					rels = append(rels, fmt.Sprintf("globaluser:%s#globaladmin@users:%s", root, sa))
+				}
 			}
 		}
 	}
@@ -102,6 +115,7 @@ func Translate(jsonData map[string]interface{}) []string {
 	}
 
 	// --- Partners ---
+	// --- Partners ---
 	if partners, ok := jsonData["partners"].(map[string]interface{}); ok {
 		for pname, v := range partners {
 			if pMap, ok := v.(map[string]interface{}); ok {
@@ -120,6 +134,10 @@ func Translate(jsonData map[string]interface{}) []string {
 				// public wildcard
 				if hasWildcard(pMap["public"]) {
 					rels = append(rels, fmt.Sprintf("partner:%s#public@users:*", pname))
+				}
+				// 🔥 NEW: global wildcard
+				if hasWildcard(pMap["global"]) {
+					rels = append(rels, fmt.Sprintf("partner:%s#global@globaluser:*", pname))
 				}
 				// denied users
 				for _, d := range toStrSlice(pMap["denied_users"]) {

@@ -104,6 +104,7 @@ func ListResourceHierarchy(resourceType, permission, subjectType, subjectID stri
 		child := nodes[e.ChildID]
 		parent := nodes[e.ParentID]
 		if child != nil && parent != nil {
+			fmt.Println("[DEBUG] Linking", parent.ID, "->", child.ID)
 			parent.Children = append(parent.Children, child)
 			hasParent[e.ChildID] = true
 		}
@@ -113,14 +114,15 @@ func ListResourceHierarchy(resourceType, permission, subjectType, subjectID stri
 	roots := []*Node{}
 	for id, n := range nodes {
 		if !hasParent[id] {
+			fmt.Println("[DEBUG] Root node:", id)
 			roots = append(roots, n)
 		}
 	}
 
 	// return
-	if len(roots) == 1 {
-		return roots[0]
-	}
+	// if len(roots) == 1 {
+	// 	return roots[0]
+	// }
 	return &Node{ID: "root", Type: resourceType, Children: roots}
 }
 
