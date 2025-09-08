@@ -45,7 +45,7 @@ func EffectiveSubjectsHandlerGin(c *gin.Context) {
 
 func main() {
 	// init SpiceDB client
-	authz.InitClient()
+	authz.InitClient("localhost:50051", "devkey")
 
 	r := gin.Default()
 

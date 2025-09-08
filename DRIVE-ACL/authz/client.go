@@ -12,10 +12,10 @@ import (
 
 var Client v1.PermissionsServiceClient
 
-func InitClient() {
+func InitClient(addr, secret string) {
 	conn, err := grpc.NewClient(
-		"localhost:50051",
-		grpcutil.WithInsecureBearerToken("devkey"),
+		addr,
+		grpcutil.WithInsecureBearerToken(secret),
 		grpc.WithTransportCredentials(insecure.NewCredentials()), // Allow insecure connection
 		grpc.WithBlock(),
 	)
