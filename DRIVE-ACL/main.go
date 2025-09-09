@@ -49,21 +49,6 @@ func main() {
 
 	r := gin.Default()
 
-	// r.POST("/assign", func(c *gin.Context) {
-	// 	var body struct {
-	// 		User       string `json:"user"`
-	// 		ObjectID   string `json:"object_id"`
-	// 		ObjectType string `json:"object_type"`
-	// 		Relation   string `json:"relation"`
-	// 	}
-	// 	if err := c.ShouldBindJSON(&body); err != nil {
-	// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-	// 		return
-	// 	}
-	// 	authz.Assign(body.User, body.ObjectType, body.ObjectID, body.Relation)
-	// 	c.JSON(200, gin.H{"status": "assigned"})
-	// })
-
 	r.POST("/check", func(c *gin.Context) {
 		var body struct {
 			User       string `json:"user"`

@@ -17,10 +17,6 @@ type Node struct {
 	Children []*Node `json:"children,omitempty"`
 }
 
-func key(t, id string) string {
-	return t + ":" + id
-}
-
 func ListResourceHierarchy(resourceType, permission, subjectType, subjectID string) *Node {
 	ctx := context.Background()
 	fmt.Println("[DEBUG] Listing hierarchy for resourceType:", resourceType)
@@ -119,23 +115,8 @@ func ListResourceHierarchy(resourceType, permission, subjectType, subjectID stri
 		}
 	}
 
-	// return
-	// if len(roots) == 1 {
-	// 	return roots[0]
-	// }
 	return &Node{ID: "root", Type: resourceType, Children: roots}
 }
-
-// ListResourceSubtree returns a hierarchical subtree starting from a specific resource
-// func printTree(node *Node, level int) {
-// 	if node == nil {
-// 		return
-// 	}
-// 	fmt.Printf("%s%s:%s\n", strings.Repeat(" ", level*2), node.Type, node.ID)
-// 	for _, child := range node.Children {
-// 		printTree(child, level+1)
-// 	}
-// }
 
 // ListResourceSubtree builds and returns a hierarchical subtree of targetType (feature only)
 func ListResourceSubtree(rootType, rootID, permission, subjectType, subjectID, targetType string) *Node {
